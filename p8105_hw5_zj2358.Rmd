@@ -8,8 +8,9 @@ output: github_document
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(knitr)
+library(janitor)
 
-knitr::opts_chunk$set(
+opts_chunk$set(
 	echo = TRUE,
 	warning = FALSE,
 	fig.width = 8, 
@@ -32,7 +33,7 @@ scale_fill_discrete = scale_fill_viridis_d
 
 #### Data import
 ```{r}
-homicide <- read_csv("homicide-data.csv")
+homicide <- read_csv("./data_file/homicide-data.csv")
 view(homicide)
 ```
 Description: 
