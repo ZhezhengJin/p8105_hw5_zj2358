@@ -32,9 +32,10 @@ scale_fill_discrete = scale_fill_viridis_d
 ## Problem 1
 
 #### Data import
-```{r}
+```{r message=F}
 homicide <- read_csv("./data_file/homicide-data.csv")
-view(homicide)
+
+homicide
 ```
 Description: 
 
@@ -107,5 +108,52 @@ cities_proportion %>%
 
 ## Problem 2
 
+#### Data import and combination
+```{r message=F}
+df <- 
+  tibble(list.files("./data_file/data_q2")) %>%
+  mutate(file_list = paste(list.files("./data_file/data_q2")))
+
+read_files <- function(x) {
+  
+    data = read_csv(paste0("./data_file/data_q2/", x)) %>%
+      mutate(file_names = x)
+}
+
+longitudinal_data <- map_df(df$file_list, read_files)
+
+longitudinal_data
+```
+
+#### Tidy dataset
+```{r}
+longitudinal_tidy <- longitudinal_data %>%
+  clean_names() %>%
+  mutate(group = ifelse(grepl("con", file_names), "Control", "Experimental")) %>%
+  mutate(subject_ID = as.integer(str_extract(file_names, "[0-9][0-9]"))) %>%
+  select(-file_names) %>%
+  pivot_longer(
+    cols = starts_with("week"),
+    names_to = "week",
+    values_to = "observation"
+  ) %>%
+  mutate(week = as.numeric(gsub("week_", "", week)))
+
+longitudinal_tidy
+```
+
+#### Spaghetti plot: Observations on Each Subject over 8 Weeks between Two Groups
+```{r}
+longitudinal_tidy %>% 
+  ggplot(aes(x = week, y =observation, color = as.factor(subject_ID))) +
+  geom_point(size=0.2) +
+  geom_line(aes(group = subject_ID), alpha=0.5) +
+  facet_grid(~group) +
+  labs(x = "Week", y = "Observation", col = "Subject ID")
+```
+
+This plot reveals a distinct contrast between the control and experimental groups: the control group's observations fluctuate significantly over the eight-week period without exhibiting a clear trend, suggesting high variability and no consistent response. In contrast, the experimental group displays a pronounced upward trend in observations, implying a systematic increase over time which suggests that the experimental condition or treatment might be having a positive and more uniform effect on the subjects. 
+
+## Problem 3
 
 
