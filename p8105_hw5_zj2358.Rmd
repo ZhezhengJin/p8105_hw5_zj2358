@@ -1,0 +1,110 @@
+---
+title: "P8105_hw5"
+author: "Zhezheng Jin"
+date: "2023-11-10"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(knitr)
+
+knitr::opts_chunk$set(
+	echo = TRUE,
+	warning = FALSE,
+	fig.width = 8, 
+  fig.height = 6,
+  out.width = "90%"
+)
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+```
+
+## Problem 1
+
+#### Data import
+```{r}
+homicide <- read_csv("homicide-data.csv")
+view(homicide)
+```
+Description: 
+
+This dataset has `r nrow(homicide)` observations and `r ncol(homicide)` variables.
+There are `r nrow(homicide)` number of observations of homicide cases in the 50 large U.S. cities and `r ncol(homicide)`  variables, including `r names(homicide)`. 
+
+#### Homicides within cities
+```{r}
+homicide <-homicide %>%
+  mutate(
+    city_state = paste(city, state, sep=", "),
+    unsolved = disposition %in% c("Closed without arrest", "Open/No arrest")
+    ) %>%
+  filter(city_state != "Tulsa, AL")
+
+cities_sum <- homicide %>%
+  group_by(city_state) %>%
+  summarise(
+    total_homicides = n(),
+    unsolved_homicides = sum(unsolved, na.rm = TRUE)
+  )
+
+cities_sum
+```
+
+#### Baltimore summary
+```{r}
+baltimore_sum <-  
+  cities_sum %>%
+  filter(city_state == "Baltimore, MD")
+baltimore_test <-
+  prop.test(
+  x = baltimore_sum %>% pull(unsolved_homicides),
+  n = baltimore_sum %>% pull(total_homicides)
+  ) %>%
+  broom::tidy()
+
+baltimore_test
+```
+
+#### Summary of each city
+```{r}
+prop_test_city <- function(unsolved, total) {
+    test_result <- prop.test(x = unsolved, n = total)
+    return(test_result)
+    }
+
+cities_proportion <- cities_sum %>%
+  mutate(
+    prop_test_result = map2(unsolved_homicides, total_homicides, prop_test_city),
+    tidy_results = map(prop_test_result, broom::tidy)
+  ) %>%
+  select(city_state, tidy_results) %>%
+  unnest(tidy_results) %>%
+  select(city_state, estimate, conf.low, conf.high)
+
+cities_proportion
+```
+
+
+#### Plot: Estimated proportion of unsolved homicides & CIs by city
+```{r}
+cities_proportion %>% 
+  mutate(city_state = fct_reorder(city_state, estimate)) %>%
+  ggplot(aes(x = city_state, y = estimate)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+## Problem 2
+
+
+
