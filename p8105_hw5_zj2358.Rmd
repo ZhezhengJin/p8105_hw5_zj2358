@@ -156,4 +156,101 @@ This plot reveals a distinct contrast between the control and experimental group
 
 ## Problem 3
 
+#### Set Parameters 
+```{r}
+n <- 30
+sigma <- 5
+alpha <- 0.05
+mus <- c(0, 1, 2, 3, 4, 5, 6)
+set.seed(1)
+```
+
+#### Define the function for mu and sigma
+```{r}
+sim_mean_sd = function(n, mu, sigma) {
+  
+  sim_data = tibble(
+    x = rnorm(n, mean = mu, sd = sigma),
+  )
+  
+  sim_data |> 
+    summarize(
+      mu_hat = mean(x),
+      sigma_hat = sd(x)
+    )
+}
+```
+
+#### Define a function for the t-test
+```{r}
+perform_t_test <- function(n, mu, sigma) {
+  sample <- rnorm(n, mean = mu, sd = sigma)
+  test_result <- t.test(sample, mu = 0)
+  broom::tidy(test_result)
+}
+```
+
+#### Initialize data frame to store results
+```{r}
+results <- tibble(mu = numeric(), mu_hat = numeric(), p_value = numeric(), reject = logical())
+```
+
+#### Simulation loop
+```{r}
+for (mu in mus) {
+  for (i in 1:5000) {
+    sim_results <- sim_mean_sd(n, mu, sigma)
+    t_test_results <- perform_t_test(n, mu, sigma)
+    results <- results %>% 
+      add_row(mu = mu, 
+              mu_hat = sim_results$mu_hat, 
+              p_value = t_test_results$p.value, 
+              reject = t_test_results$p.value < alpha)
+  }
+}
+```
+    
+#### Power Calculation
+```{r}
+power_results <- results %>% 
+  group_by(mu) %>% 
+  summarise(power = mean(reject), 
+            avg_mu_hat = mean(mu_hat), 
+            avg_mu_hat_rejected = mean(mu_hat[reject]))
+```
+
+
+#### Plot: power vs mu
+```{r}
+power_results %>% 
+  ggplot(aes(x = mu, y = power)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Power vs. True Mean", x = "True Mean (mu)", y = "Power")
+```
+The graph illustrates a positive association between effect size and power: as the true mean, representing the effect size, increases, so does the power of the test. This reflects the principle that larger effects are easier to detect, thereby increasing the likelihood of correctly rejecting the null hypothesis when it is indeed false.
+
+#### Plot: average mu_hat vs mu
+```{r}
+power_results %>% 
+  ggplot(aes(x = mu)) +
+  geom_point(aes(y = avg_mu_hat, color = "Average Estimate"), shape = 1) +  
+  geom_line(aes(y = avg_mu_hat, color = "Average Estimate")) +
+  geom_point(aes(y = avg_mu_hat_rejected, color = "Conditional Average Estimate"), shape = 2) +
+  geom_line(aes(y = avg_mu_hat_rejected, color = "Conditional Average Estimate"), linetype = "dashed") +
+  labs(
+    title = "Average Estimated Mean vs. True Mean",
+    x = "True Mean (mu)",
+    y = "Average Estimated Mean",
+    color = "mu_hat"
+  ) +
+  scale_color_manual(
+    values = c("Average Estimate" = "blue", "Conditional Average Estimate" = "red")
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+The plot indicates that the sample average of mean (μ^) in tests where the null hypothesis is rejected closely approximates the true mean (μ), as demonstrated by the overlapping lines for average estimates and conditional average estimates. This suggests that the t-test is an unbiased estimator of the population mean when the null is rejected, which is consistent with the properties of the t-test under the assumed conditions of the simulation. 
+
+
 
